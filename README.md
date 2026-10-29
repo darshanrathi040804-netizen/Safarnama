@@ -1,166 +1,240 @@
-# Distributed File System (ChunkStore)
+# 🌍 Safarnama: Your Ultimate Travel Companion
 
-A highly scalable distributed file system with metadata management, file chunking, round-robin storage balancing, and active system monitoring — inspired by the architecture of GFS (Google File System) and HDFS.
+Safarnama is a feature-rich, community-driven travel blogging platform designed to empower travelers. Whether you're documenting your own journeys or looking for inspiration, Safarnama provides the tools to create, share, and connect in a modern, AI-enhanced environment.
 
 ---
 
 ## 🏗️ System Architecture
 
-ShardVault is built on a modular, decoupled microservices architecture designed to handle large file storage by splitting files into smaller chunks and distributing them across multiple storage service nodes.
+Safarnama is built using a **Three-Tier Architecture** coupled with an event-driven **Real-Time Gateway** and an **AI Service Integration Layer**.
+
+### High-Level Architecture Diagram
 
 ```mermaid
 graph TD
-    Client[Client Browser / React UI]
-    Gateway[API Gateway :3000]
-    Meta[Metadata Service :3001]
-    DB[(MongoDB :27017)]
-    Node1[Storage Node 1 :3002]
-    Node2[Storage Node 2 :3003]
-    Node3[Storage Node 3 :3004]
-    Prom[Prometheus :9090]
-    Graf[Grafana :3005]
-
-    Client -->|Upload / Download| Gateway
-    Gateway -->|Get/Store Metadata| Meta
-    Meta -->|JSON Schema| DB
-    Gateway -->|Chunk Stream| Node1
-    Gateway -->|Chunk Stream| Node2
-    Gateway -->|Chunk Stream| Node3
-    
-    Prom -->|Scrape Metrics| Gateway
-    Prom -->|Scrape Metrics| Meta
-    Prom -->|Scrape Metrics| Node1
-    Prom -->|Scrape Metrics| Node2
-    Prom -->|Scrape Metrics| Node3
-    Graf -->|Visualize| Prom
-```
-
-### 1. API Gateway (Port 3000)
-- **Coordinator**: Serves as the single entrypoint for clients. Orchestrates file read, write, metadata lookup, and deletion.
-- **Chunking Engine**: Automatically slices large binary files into fixed-size **5MB chunks** before distribution.
-- **Load Balancer**: Utilizes a Round-Robin strategy to distribute file chunks across the configured active storage services.
-- **Sequential Stream Reassembler**: Streams chunks from storage nodes in order and pipes them back to the client sequentially to optimize memory footprint during downloads.
-
-### 2. Metadata Service (Port 3001)
-- **Catalog Registry**: Manages the mapping database of file IDs, corresponding chunk lists, and the exact physical storage nodes where each chunk resides.
-- **Storage Layer**: Backed by **MongoDB** with Mongoose models, tracking fields such as `filename`, `size`, `mimeType`, `replicationFactor`, and individual chunk `checksums` (SHA-256).
-
-### 3. Storage Services (Ports 3002-3004)
-- **Data Nodes**: Stateless services running on individual volumes that handle chunk storage.
-- **Write Verification**: Computes `sha256` integrity checksums of the chunks upon receipt.
-- **Direct Streaming**: Streams stored chunks back to the API Gateway using Node.js stream piping to avoid high memory overhead.
-
-### 4. Monitoring (Ports 9090 & 3005)
-- **Prometheus**: Automatically scrapes default Node.js runtimes and custom application metrics (e.g., HTTP request durations, file upload counters, chunk operation sizes).
-- **Grafana**: Pulls from Prometheus to render real-time dashboard analytics.
-
----
-
-## ⚡ Key System Data Flows
-
-### A. Upload and Chunking Flow
-1. **Client** uploads file via `POST /api/files/upload`.
-2. **API Gateway** pre-registers the file metadata with the **Metadata Service** to get a unique `fileId`.
-3. **API Gateway** splits the file buffer into **5MB segments**.
-4. For each segment, a `chunkId` is generated, and a storage node is assigned via Round-Robin.
-5. The chunk is uploaded to the target **Storage Service** via `POST /chunks`.
-6. Once all chunks are saved, the gateway updates the Metadata Service with the final mapping array.
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Gateway
-    participant Metadata
-    participant Storage Node
-
-    Client->>Gateway: POST /api/files/upload (File)
-    Gateway->>Metadata: POST /files (Register file metadata)
-    Metadata-->>Gateway: Returns fileId
-    Note over Gateway: Slice file into 5MB chunks
-    loop For each chunk
-        Gateway->>Storage Node: POST /chunks (chunkId + data)
-        Storage Node-->>Gateway: Returns size & SHA-256 checksum
+    %% Clients
+    subgraph "Client Tier (Frontend)"
+        Client["Browser (EJS Templates / HTML5 / CSS3)"]
+        SIOClient["Socket.io Client"]
+        Editor["TinyMCE Rich Text Editor"]
     end
-    Gateway->>Metadata: POST /files/{fileId}/chunks (Submit chunk list)
-    Metadata-->>Gateway: 201 Created
-    Gateway-->>Client: Upload Completed
+
+    %% Web Application Gateway / Server
+    subgraph "Application Tier (Backend)"
+        Server["Node.js / Express Server"]
+        Auth["Passport.js Auth (Local, Google & GitHub OAuth)"]
+        Session["Express Session & JWT validation"]
+        Uploader["Multer (Media & Profile Uploads)"]
+        SIOServer["Socket.io Server (Gateway)"]
+    end
+
+    %% Databases
+    subgraph "Database Tier (Data Storage)"
+        DB[("MongoDB (Mongoose ODM)")]
+    end
+
+    %% External services
+    subgraph "External & AI Tier"
+        AIAPI["External AI API (OpenAI-compatible / Groq)"]
+        Scraper["Cheerio (Link Scraping)"]
+        PDF["pdf-parse (PDF Content Extractor)"]
+    end
+
+    %% Relationships
+    Client <-->|HTTP / HTTPS| Server
+    SIOClient <-->|WebSocket Connection| SIOServer
+    Editor -->|Media Uploads| Uploader
+    Server -->|Uses| Auth
+    Server -->|Uses| Session
+    Server -->|Local storage| Uploader
+    SIOServer <-->|Data Sync| DB
+    Server <-->|Queries/Writes| DB
+    Server -->|Inputs| PDF
+    Server -->|Fetches| Scraper
+    Server <-->|Chatbot / Gen AI Payload| AIAPI
 ```
 
-### B. Download and Reassembly Flow
-1. **Client** requests `GET /api/files/:fileId/download`.
-2. **API Gateway** queries **Metadata Service** to retrieve the ordered list of chunks.
-3. For each chunk in the file mapping:
-   - **API Gateway** requests the stream directly from the assigned storage node (`GET /chunks/:chunkId`).
-   - **API Gateway** pipes the chunk stream into the client's HTTP response buffer with `{ end: false }`.
-4. Once all chunks have completed streaming, the Gateway ends the response stream (`res.end()`).
+---
+
+### Core Architectural Components
+
+#### 1. Presentation Layer (Frontend Client)
+*   **EJS (Embedded JavaScript Templates)**: Server-side rendering engine used to deliver dynamic HTML structures to the client.
+*   **Vanilla CSS**: Custom, modern layout styling without heavy framework overhead.
+*   **TinyMCE Editor**: Rich text editor integrated into the blog creation interface to allow inline uploads and clean formatting of travel blogs.
+*   **Socket.io Client**: Manages full-duplex WebSocket connections back to the server for instant chat delivery.
+
+#### 2. Controller & Logic Layer (Express Server)
+*   **Express Router**: Segmented routers to isolate modules:
+    *   `routes/user.js`: Handles registration, sign-in, and auth redirects.
+    *   `routes/blog.js`: Handles blog creation, updating, liking, commenting, and AI generation hooks.
+    *   `routes/profile.js` & `routes/social.js`: Custom user dashboards, searching travelers, and following/unfollowing systems.
+    *   `routes/chat.js` & `routes/bot.js`: Fetching P2P messages and executing chat calls to the travel bot.
+*   **Authentication & Session Pipeline**:
+    *   Uses **Passport.js** to handle third-party OAuth authentication strategies (Google & GitHub).
+    *   Uses a **JWT authentication middleware** (`checkForAuthenticationCookie`) to read authorization tokens from cookies, verify credentials, and populate user sessions.
+*   **Multer Middleware**: Configured to parse multipart form-data, permitting image uploads for blog covers, profile avatars, and inline multimedia contents.
+
+#### 3. Real-Time Communication Gateway (`gateway/socket.js`)
+*   **Token-Verified Socket Handshake**: Authenticates socket connections by reading cookies and verifying JWT signatures before establishing a connection.
+*   **Online Presence Tracker**: Maintains an in-memory `Map` binding active `userId` values to `socketId` connections, enabling global online status notifications (`user_status` events).
+*   **Isolated Rooms**: Establishes discrete room segments based on MongoDB `Conversation` IDs to isolate private conversations.
+
+#### 4. AI & Content Scraper Layer
+*   **Cheerio & Fetch**: Allows blogs to be generated from a URL by retrieving the HTML body, removing scripts/styles/navigation tags, and extracting the core textual context.
+*   **pdf-parse**: Reads raw travel documents/brochures directly from local file buffers to supply high-density source context to the generative models.
+*   **OpenAI-Compatible Client**: Queries external LLMs (e.g., Groq) with structured system prompts for both blog drafts and direct travel assistant conversations.
+
+#### 5. Data Store Layer (Mongoose Schemas)
+*   **User Schema**: Encodes user profiles, password salts (via HMAC SHA256 hashing pre-save hooks), followers, and OAuth tokens.
+*   **Blog Schema**: Encodes blog titles, HTML bodies, cover images, likes, dislikes, categories, and reference linkages.
+*   **Comment Schema**: Tracks multi-user engagement linked to individual blogs.
+*   **Conversation & Message Schemas**: Models chat history and metadata between platform users.
 
 ---
 
-## 🔌 Port Mapping & Configurations
+## 🔄 Core Data Flows
 
-| Service | Port | Endpoint / Dependency | Description |
-| :--- | :---: | :--- | :--- |
-| **Frontend** | `80` | Client UI | React SPA running on Nginx |
-| **API Gateway** | `3000` | `/api/files/*` | Main routing & chunking backend |
-| **Metadata Service** | `3001` | `/files/*` | Mapped to MongoDB |
-| **Storage Service 1** | `3002` | `/chunks/*` | Chunk storage node 1 |
-| **Storage Service 2** | `3003` | `/chunks/*` | Chunk storage node 2 |
-| **Storage Service 3** | `3004` | `/chunks/*` | Chunk storage node 3 |
-| **MongoDB** | `27017` | `mongodb://...` | Persistence DB |
-| **Prometheus** | `9090` | `/metrics` scraper | System monitoring tool |
-| **Grafana** | `3005` | Dashboard UI | Metrics visualization portal |
+### A. Authentication Flow
+```text
+[User Client] -> (Enters Credentials / OAuth Click)
+      |
+      v
+[Express Route] -> (Verifies Password Salt OR Resolves OAuth Callback)
+      |
+      v
+[Auth Service] -> (Generates JWT signed with JWT_SECRET)
+      |
+      v
+[Express Response] -> (Writes JWT to cookie "token") -> Redirects to Home Page
+```
+
+### B. AI-Powered Blog Generation Flow
+```text
+[User Client] -> (Inputs Topic, Scrape Link, OR Uploads PDF)
+      |
+      v
+[Express Route] -> (Resolves Input Type)
+      |
+      +---> [Topic]: Read raw string
+      +---> [Link]: HTTP Fetch -> Cheerio Scraper -> Clean Text
+      +---> [PDF]: Multer Upload -> pdf-parse Extract -> Delete File
+      |
+      v
+[Prompt Formatter] -> (Merges Context with Travel Writer System Prompt)
+      |
+      v
+[AI API (Groq/OpenAI)] -> (Generates Structured HTML Document)
+      |
+      v
+[User Client] -> (Populated directly into TinyMCE Editor canvas)
+```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Key Features
 
-### Prerequisites
-- Node.js 18 or higher
-- Docker & Docker Compose
+### 🔐 Secure Authentication
+- **Multi-method Login**: Sign up or log in using local email/password or seamless OAuth integration with **Google** and **GitHub**.
+- **Secure Sessions**: Powered by JWT and Passport.js for a safe browsing experience.
 
-### Quickstart Installation
-1. Install dependencies for the local packages:
+### 🤖 AI-Powered Content Creation
+- **Instant Blog Generation**: Use the built-in AI to generate high-quality travel blogs.
+  - **From Topics**: Simply provide a keyword or title.
+  - **From PDFs**: Upload a travel brochure or document and let the AI extract the essence.
+  - **From Links**: Paste a URL to summarize and re-imagine travel articles.
+- **Content Editor**: A powerful editor with support for cover images and multimedia attachments.
+- **AI Editor Review**: Automatically proofread content, fix grammar, and get styled HTML corrections alongside constructive recommendations.
+
+### 👥 Social & Community Interaction
+- **Personalized Profiles**: Showcase your travel stories and manage your content through a custom user dashboard.
+- **Social Connect**: Follow your favorite travelers to stay updated on their latest adventures.
+- **Engagement Tools**: Express yourself by liking or disliking posts and engaging in real-time discussion via comments.
+
+### 💬 Real-time Communication
+- **P2P Chat**: Connect directly with other travelers to share tips, messages, and typing statuses.
+- **AI Travel Assistant**: A real-time chatbot (powered by Groq AI) available to answer your travel queries 24/7.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend**: Node.js, Express.js
+- **Database**: MongoDB (Mongoose ODM)
+- **Frontend**: EJS (Embedded JavaScript Templates), Vanilla CSS
+- **AI Integration**: Groq / OpenAI-compatible API
+- **Real-time**: Socket.io
+- **Security**: Helmet, JWT, Cookie-parser
+- **File Handling**: Multer
+
+---
+
+## 📂 Project Structure
+
+```text
+├── config/             # Passport and configuration files
+├── gateway/            # Socket.io connection logic & messaging handlers
+├── middlewares/        # Custom Express middlewares (authentication, error handlers)
+├── models/             # Mongoose schemas (User, Blog, Comment, Conversation, Message)
+├── public/             # Static assets (CSS, JS, Uploads, Images)
+├── routes/             # API endpoints and UI rendering routes
+├── services/           # Authentication service & token generation
+├── views/              # EJS templates for the UI views (home, blog, profiles, chat, search)
+├── index.js            # Main server entry point
+└── package.json        # Node.js dependencies and scripts
+```
+
+---
+
+## ⚙️ Installation & Setup
+
+1. **Clone the repository**:
    ```bash
-   # Root backend services
-   npm install
-
-   # Frontend application
-   cd frontend
-   npm install
-   cd ..
+   git clone https://github.com/Shriharipise18/Safarnama.git
+   cd Safarnama
    ```
 
-2. Run the entire microservices stack in containers:
+2. **Install dependencies**:
    ```bash
-   docker-compose up -d --build
+   npm install
    ```
 
-3. Open your browser and navigate to:
-   - **Web UI**: `http://localhost`
-   - **Prometheus Metrics**: `http://localhost:9090`
-   - **Grafana Dashboards**: `http://localhost:3005`
+3. **Environment Variables**:
+   Create a `.env` file in the root directory and add the following:
+   ```env
+   PORT=8000
+   MONGO_URL=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   SESSION_SECRET=your_session_secret
+   
+   # AI Configuration (Groq / OpenAI Compatible API)
+   AI_API_KEY=your_ai_api_key
+   AI_API_URL=your_ai_endpoint_url
+   AI_API_MODEL=your_selected_llm_model
+   
+   # Passport OAuth Credentials
+   GOOGLE_CLIENT_ID=your_google_oauth_id
+   GOOGLE_CLIENT_SECRET=your_google_oauth_secret
+   GITHUB_CLIENT_ID=your_github_oauth_id
+   GITHUB_CLIENT_SECRET=your_github_oauth_secret
+   ```
+
+4. **Run the application**:
+   ```bash
+   # For development
+   npm run dev
+
+   # For production
+   npm start
+   ```
 
 ---
 
-## 🛠️ Development & Testing
+## 🔮 Future Enhancements
+- **Interactive Maps**: Visualize travel routes directly on the blog.
+- **Offline Support**: Draft blogs even without an internet connection.
+- **Advanced Social Features**: Shareable travel itineraries and group trips.
 
-To run individual services outside Docker for local debugging:
+---
 
-```bash
-# Start API Gateway (Port 3000)
-npm run start
-
-# Start Metadata Service (Port 3001)
-npm run start:metadata
-
-# Start Storage Service (Port 3002)
-npm run start:storage.
-
-# Start React Dev Server (Port 3000 default mapping)
-npm run start:frontend
-```
-
-Run test suite validation:
-```bash
-npm test
-```
+Made with ❤️ for Travelers.
