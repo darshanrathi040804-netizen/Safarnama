@@ -1,0 +1,44 @@
+/* Background Patterns CSS - Clean & Subtle */
+:root {
+    /* Texture: A very fine grain for "paper-like" feel */
+    --light-pattern: radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.03) 1px, transparent 0);
+    --dark-pattern: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+}
+
+body {
+    background-color: var(--bg-color);
+    background-image: var(--light-pattern);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+}
+
+[data-theme="dark"] body {
+    background-color: var(--bg-color);
+    background-image: var(--dark-pattern);
+}
+
+/* Page specific overrides - unified for consistency */
+.home-page body,
+.blog-page body,
+.profile-page body,
+.auth-page body {
+    background-image: var(--light-pattern);
+}
+
+[data-theme="dark"] .home-page body,
+[data-theme="dark"] .blog-page body,
+[data-theme="dark"] .profile-page body,
+[data-theme="dark"] .auth-page body {
+    background-image: var(--dark-pattern);
+}
+
+/* Cleanup layout containers */
+.container.mt-4,
+.container.mt-5 {
+    background-color: transparent;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+}
+
+/* If specific containers need card styling, they should use .card class */

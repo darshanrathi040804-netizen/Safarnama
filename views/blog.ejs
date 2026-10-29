@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('partials/head') %>
+        <title>
+            <%= blog.title %>
+        </title>
+
+</head>
+
+<body>
+    <%- include('partials/header') %>
+        <%- include('partials/nav') %>
+
+            <div class="blog-reading-container animate-fade-up">
+                <article>
+                    <!-- Modern Blog Header -->
+                    <header class="blog-hero-header mb-5">
+                        <div class="blog-meta-badge mb-3">
+                            <span class="badge rounded-pill px-3 py-2"
+                                style="background-color: <%= categoryColors[blog.category] || '#6c757d' %>;">
+                                <%= blog.category %>
+                            </span>
+                        </div>
+
+                        <h1 class="display-3 fw-bold mb-4 tracking-tight">
+                            <%= blog.title %>
+                        </h1>
+
+                        <div class="d-flex flex-column align-items-center gap-3">
+                            <div class="author-chip glass-card">
+                                <a href="/profile/<%= blog.createdBy._id %>" class="text-decoration-none">
+                                    <img src="<%= blog.createdBy.profileImageURL || '/images/default.png' %>"
+                                        alt="<%= blog.createdBy.fullName %>" class="rounded-circle me-2"
+                                        style="width: 32px; height: 32px; object-fit: cover;"
+                                        onerror="this.src='/images/default.png'">
+                                </a>
+                                <span class="fw-semibold">
+                                    <a href="/profile/<%= blog.createdBy._id %>"
+                                        class="text-decoration-none text-reset">
+                                        <%= blog.createdBy.fullName %>
+                                    </a>
+                                </span>
+                            </div>
+                            <time class="text-muted small">
+                                Published on <%= new Date(blog.createdAt).toLocaleString('en-US', { day: 'numeric' ,
+                                    month: 'short' , year: 'numeric' }) %>
+                            </time>
+                        </div>
+
+                        <% if (locals.user && blog.createdBy._id.toString()===locals.user._id.toString()) { %>
+                            <div class="mt-4">
+                                <a href="/edit-blog/<%= blog._id %>"
+                                    class="btn btn-sm btn-outline-primary rounded-pill px-3 me-2">
+                                    <i data-lucide="edit-3" class="icon-sm"></i> Edit
+                                </a>
+                                <form action="/blog/<%= blog._id %>?_method=DELETE" method="POST" class="d-inline"
+                                    onsubmit="return confirm('Delete this blog?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                        <i data-lucide="trash-2" class="icon-sm"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                            <% } %>
+                    </header>
+
+                    <% if (blog.coverImageURL) { %>
+                        <figure class="mb-5 animate-fade-up" style="animation-delay: 0.2s;">
+                            <img src="<%= blog.coverImageURL %>" alt="<%= blog.title %>"
+                                class="img-fluid rounded-4 shadow-lg w-100"
+                                style="max-height: 500px; object-fit: cover;">
+                        </figure>
+                        <% } %>
+
+                            <!-- Blog Body -->
+                            <div class="blog-article-body animate-fade-up" style="animation-delay: 0.3s;">
+                                <%- blog.body %>
+                            </div>
+
+                            <!-- Media Gallery - if blog has media files -->
+                            <% if (blog.mediaFiles && blog.mediaFiles.length> 0) { %>
+                                <div class="media-gallery mt-4">
+                                    <h5 class="mb-3">Attached Media</h5>
+                                    <div class="row g-3">
+                                        <% blog.mediaFiles.forEach(function(file, index) { %>
+                                            <% if (file.type.startsWith('image/')) { %>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="media-card">
+                                                        <a href="<%= file.url %>" data-lightbox="blog-gallery"
+                                                            data-title="<%= file.name %>">
+                                                            <img src="<%= file.url %>" class="img-fluid rounded"
+                                                                alt="<%= file.name %>">
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <% } else if (file.type.startsWith('video/')) { %>
+                                                    <div class="col-md-6">
+                                                        <div class="media-card video-card">
+                                                            <video controls class="img-fluid rounded w-100"
+                                                                preload="metadata">
+                                                                <source src="<%= file.url %>" type="<%= file.type %>">
+                                                                Your browser does not support the video tag.
+                                                            </video>
+                                                            <div class="media-info p-2">
+                                                                <span class="media-name fw-bold text-truncate d-block">
+                                                                    <%= file.name %>
+                                                                </span>
+                                                                <a href="<%= file.url %>"
+                                                                    class="btn btn-sm btn-outline-primary mt-1"
+                                                                    target="_blank" download>
+                                                                    <i data-lucide="download" class="icon-sm"></i>
+                                                                    Download
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <% } else if (file.type.startsWith('audio/')) { %>
+                                                        <div class="col-md-6">
+                                                            <div class="media-card audio-card p-3">
+                                                                <audio controls class="w-100">
+                                                                    <source src="<%= file.url %>"
+                                                                        type="<%= file.type %>">
+                                                                    Your browser does not support the audio element.
+                                                                </audio>
+                                                                <div class="media-info mt-2">
+                                                                    <span class="media-name">
+                                                                        <%= file.name %>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <% } else { %>
+                                                            <div class="col-md-4 col-sm-6">
+                                                                <div class="media-card document-card p-3">
+                                                                    <a href="<%= file.url %>" class="document-link"
+                                                                        target="_blank">
+                                                                        <div class="document-icon">
+                                                                            <i data-lucide="file-text" class="icon-lg"
+                                                                                style="width: 48px; height: 48px;"></i>
+                                                                        </div>
+                                                                        <div class="media-info mt-2">
+                                                                            <span class="media-name">
+                                                                                <%= file.name %>
+                                                                            </span>
+                                                                            <span class="media-size text-muted">
+                                                                                <%= (file.size / 1024).toFixed(2) %> KB
+                                                                            </span>
+                                                                        </div>
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                            <% } %>
+                                                                <% }); %>
+                                    </div>
+                                </div>
+                                <% } %>
+            </div>
+
+            <!-- Modern Reaction Toolbar -->
+            <div class="d-flex justify-content-center mb-5">
+                <div class="reaction-toolbar glass-card animate-fade-up">
+                    <form action="/blog/like/<%= blog._id %>" method="POST" class="d-inline">
+                        <button type="submit"
+                            class="reaction-btn <%= blog.likes && blog.likes.includes(locals.user?._id) ? 'text-primary' : 'text-secondary' %>">
+                            <i data-lucide="heart"
+                                class="<%= blog.likes && blog.likes.includes(locals.user?._id) ? 'fill-current' : '' %>"></i>
+                            <span>
+                                <%= blog.likes ? blog.likes.length : 0 %>
+                            </span>
+                        </button>
+                    </form>
+
+                    <div class="vr mx-2 text-muted opacity-25"></div>
+
+                    <form action="/blog/dislike/<%= blog._id %>" method="POST" class="d-inline">
+                        <button type="submit"
+                            class="reaction-btn <%= blog.dislikes && blog.dislikes.includes(locals.user?._id) ? 'text-danger' : 'text-secondary' %>">
+                            <i data-lucide="thumbs-down"></i>
+                            <span>
+                                <%= blog.dislikes ? blog.dislikes.length : 0 %>
+                            </span>
+                        </button>
+                    </form>
+
+                    <div class="vr mx-2 text-muted opacity-25"></div>
+
+                    <div class="blog-share dropdown">
+                        <button class="reaction-btn text-secondary dropdown-toggle no-caret" type="button"
+                            data-bs-toggle="dropdown">
+                            <i data-lucide="share-2"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end glass-card border-0 shadow-lg p-2">
+                            <a class="dropdown-item rounded-2" href="#" id="shareTwitter"><i data-lucide="twitter"
+                                    class="icon-sm me-2"></i> Twitter</a>
+                            <a class="dropdown-item rounded-2" href="#" id="shareFacebook"><i data-lucide="facebook"
+                                    class="icon-sm me-2"></i> Facebook</a>
+                            <a class="dropdown-item rounded-2" href="#" id="shareWhatsApp"><i
+                                    data-lucide="message-circle" class="icon-sm me-2"></i> WhatsApp</a>
+                            <hr class="dropdown-divider">
+                            <button class="dropdown-item rounded-2" id="copyLinkBtn"><i data-lucide="link"
+                                    class="icon-sm me-2"></i> Copy Link</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </article>
+
+            <!-- Modern Comments Section -->
+            <section class="comments-section mt-5 border-top pt-5">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h3 class="fw-bold mb-0">Discussions (<%= comments.length %>)</h3>
+                    <div class="text-muted"><i data-lucide="message-square" class="me-1"></i> Joining the conversation
+                    </div>
+                </div>
+
+                <% if (locals.user) { %>
+                    <div class="comment-form-wrapper glass-card p-4 rounded-4 mb-5 shadow-sm">
+                        <form action="/comment/<%= blog._id %>" method="POST">
+                            <div class="mb-3">
+                                <textarea name="content" class="form-control border-0 bg-light p-3 rounded-3" rows="3"
+                                    placeholder="Add to the discussion..." required style="resize: none;"></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary px-4 fw-bold rounded-pill">Post
+                                    Comment</button>
+                            </div>
+                        </form>
+                    </div>
+                    <% } else { %>
+                        <div class="alert alert-light border glass-card text-center py-4 rounded-4 mb-5">
+                            <p class="mb-2">Want to join the discussion?</p>
+                            <a href="/user/signin" class="btn btn-outline-primary btn-sm rounded-pill px-4">Sign in to
+                                Comment</a>
+                        </div>
+                        <% } %>
+
+                            <div class="comments-list">
+                                <% if (comments.length===0) { %>
+                                    <div class="text-center py-5 opacity-50">
+                                        <i data-lucide="message-square-dashed" class="mb-3"
+                                            style="width: 48px; height: 48px;"></i>
+                                        <p>No comments yet. Be the first to share your thoughts!</p>
+                                    </div>
+                                    <% } else { %>
+                                        <% comments.forEach(function(comment) { %>
+                                            <div class="comment-card animate-fade-up">
+                                                <div class="d-flex gap-3">
+                                                    <img src="<%= comment.createdBy.profileImageURL || '/images/default.png' %>"
+                                                        alt="<%= comment.createdBy.fullName %>"
+                                                        class="rounded-circle shadow-sm"
+                                                        style="width: 45px; height: 45px; object-fit: cover;"
+                                                        onerror="this.src='/images/default.png'">
+                                                    <div class="flex-grow-1">
+                                                        <div
+                                                            class="d-flex justify-content-between align-items-center mb-2">
+                                                            <h6 class="fw-bold mb-0 text-primary">
+                                                                <%= comment.createdBy.fullName %>
+                                                            </h6>
+                                                            <time class="text-muted small">
+                                                                <%= new
+                                                                    Date(comment.createdAt).toLocaleDateString('en-US',
+                                                                    { month: 'short' , day: 'numeric' }) %>
+                                                            </time>
+                                                        </div>
+                                                        <p class="mb-0 text-secondary" style="font-size: 1rem;">
+                                                            <%= comment.content %>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <% }); %>
+                                                <% } %>
+                            </div>
+            </section>
+            </div>
+
+            <%- include('partials/footer') %>
+                <%- include('partials/scripts') %>
+</body>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const currentUrl = window.location.href;
+        const blogTitle = "<%= blog.title %>";
+
+        // Update Share Links
+        document.getElementById('shareTwitter').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out this blog: ' + blogTitle)}&url=${encodeURIComponent(currentUrl)}`;
+        document.getElementById('shareFacebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`;
+        document.getElementById('shareLinkedIn').href = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(currentUrl)}&title=${encodeURIComponent(blogTitle)}`;
+        document.getElementById('shareWhatsApp').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(blogTitle + ' ' + currentUrl)}`;
+
+        // Copy Link Functionality
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        copyLinkBtn.addEventListener('click', function () {
+            navigator.clipboard.writeText(currentUrl).then(() => {
+                const originalText = copyLinkBtn.innerHTML;
+                copyLinkBtn.innerHTML = '<i data-lucide="check" class="icon-sm me-2 text-success"></i> Copied!';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                setTimeout(() => {
+                    copyLinkBtn.innerHTML = originalText;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy link.');
+            });
+        });
+    });
+</script>
+
+</html>

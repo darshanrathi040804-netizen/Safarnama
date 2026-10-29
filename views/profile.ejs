@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('partials/head') %>
+        <title>
+            <%= user.fullName %>'s Profile
+        </title>
+</head>
+
+<body>
+    <%- include('partials/header') %>
+        <%- include('partials/nav') %>
+
+            <div class="container mt-5 mb-5">
+                <div class="row g-4">
+                    <!-- Sidebar: User Info -->
+                    <div class="col-lg-4">
+                        <div class="profile-header-card sticky-top" style="top: 2rem; z-index: 1;">
+                            <img src="<%= user.profileImageURL || '/images/default.png' %>" alt="<%= user.fullName %>"
+                                class="profile-avatar-lg" onerror="this.src='/images/default.png'">
+
+                            <h1 class="profile-name">
+                                <%= user.fullName %>
+                            </h1>
+                            <span class="profile-role-badge">
+                                <%= user.role %>
+                            </span>
+
+                            <div class="d-flex flex-column gap-2 mb-4">
+                                <a href="/profile/edit" class="btn btn-outline-primary w-100">
+                                    <i data-lucide="user-cog" class="icon-md me-1"></i> Edit Profile
+                                </a>
+                            </div>
+
+                            <div class="text-start px-3 mb-4">
+                                <p class="text-secondary mb-2">
+                                    <i data-lucide="mail" class="icon-sm me-2 text-primary opacity-75"></i>
+                                    <%= user.email %>
+                                </p>
+                                <% if (user.bio) { %>
+                                    <p class="text-secondary mb-0">
+                                        <i data-lucide="info" class="icon-sm me-2 text-primary opacity-75"></i>
+                                        <%= user.bio %>
+                                    </p>
+                                    <% } %>
+                            </div>
+
+                            <div class="profile-stats-grid">
+                                <a href="/social/followers/<%= user._id %>" class="stat-box">
+                                    <span class="stat-value">
+                                        <%= user.followers ? user.followers.length : 0 %>
+                                    </span>
+                                    <span class="stat-label">Followers</span>
+                                </a>
+                                <a href="/social/following/<%= user._id %>" class="stat-box">
+                                    <span class="stat-value">
+                                        <%= user.following ? user.following.length : 0 %>
+                                    </span>
+                                    <span class="stat-label">Following</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="col-lg-8">
+                        <!-- Blogs Section -->
+                        <div class="section-header">
+                            <h3 class="section-title"><i data-lucide="feather" class="text-primary icon-md me-1"></i> My
+                                Blogs</h3>
+                            <% if (blogs.length> 0) { %>
+                                <span class="badge bg-light text-dark border">
+                                    <%= blogs.length %> Posts
+                                </span>
+                                <% } %>
+                        </div>
+
+                        <% if (blogs.length> 0) { %>
+                            <div class="row g-4 mb-5">
+                                <% blogs.forEach(blog=> { %>
+                                    <div class="col-md-6">
+                                        <div class="card h-100 shadow-sm border-0">
+                                            <img src="<%= blog.coverImageURL %>" class="card-img-top"
+                                                alt="<%= blog.title %>" style="height: 200px; object-fit: cover;">
+                                            <div class="card-body">
+                                                <h5 class="card-title fw-bold text-truncate">
+                                                    <%= blog.title %>
+                                                </h5>
+                                                <p class="card-text text-secondary text-truncate-3"
+                                                    style="font-size: 0.9rem;">
+                                                    <%= blog.body.replace(/<[^>]*>/g, '').substring(0, 100) %>...
+                                                </p>
+                                            </div>
+                                            <div
+                                                class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center pb-3">
+                                                <div class="btn-group">
+                                                    <a href="/blog/<%= blog._id %>"
+                                                        class="btn btn-sm btn-outline-primary">Read</a>
+                                                    <a href="/edit-blog/<%= blog._id %>"
+                                                        class="btn btn-sm btn-outline-secondary">Edit</a>
+                                                </div>
+                                                <form action="/blog/<%= blog._id %>?_method=DELETE" method="POST"
+                                                    class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i data-lucide="trash-2" class="icon-sm me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% }) %>
+                            </div>
+                            <% } else { %>
+                                <div class="text-center py-5 bg-light rounded-3 mb-5">
+                                    <i data-lucide="file-text" class="mb-3 opacity-25"
+                                        style="width: 48px; height: 48px;"></i>
+                                    <h5>No blogs yet</h5>
+                                    <p class="text-secondary">Start sharing your thoughts with the world.</p>
+                                    <a href="/blog/add-new" class="btn btn-primary mt-2">Create Blog</a>
+                                </div>
+                                <% } %>
+
+                                    <!-- Comments Section -->
+                                    <div class="section-header mt-5">
+                                        <h3 class="section-title"><i data-lucide="message-square"
+                                                class="text-primary icon-md me-1"></i> My
+                                            Comments</h3>
+                                    </div>
+
+                                    <% if (comments.length> 0) { %>
+                                        <div class="d-flex flex-column gap-3">
+                                            <% comments.forEach(comment=> { %>
+                                                <div class="card border-0 shadow-sm p-3">
+                                                    <div class="d-flex justify-content-between">
+                                                        <p class="mb-2 text-secondary fst-italic">"<%= comment.content
+                                                                %>"</p>
+                                                        <form action="/comment/<%= comment._id %>?_method=DELETE"
+                                                            method="POST">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-danger border-0">
+                                                                <i data-lucide="x" class="icon-sm"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        on <a href="/blog/<%= comment.blogId?._id %>"
+                                                            class="text-decoration-none fw-bold">
+                                                            <%= comment.blogId?.title || 'Deleted Blog' %>
+                                                        </a>
+                                                    </small>
+                                                </div>
+                                                <% }) %>
+                                        </div>
+                                        <% } else { %>
+                                            <div class="text-center py-5 bg-light rounded-3">
+                                                <i data-lucide="message-circle" class="mb-3 opacity-25"
+                                                    style="width: 48px; height: 48px;"></i>
+                                                <h5>No comments yet</h5>
+                                            </div>
+                                            <% } %>
+                    </div>
+                </div>
+            </div>
+            <%- include('partials/footer') %>
+                <%- include('partials/scripts') %>
+</body>
+
+</html>
